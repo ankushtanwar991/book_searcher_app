@@ -15,7 +15,7 @@ module.exports = {
       return saved;
     } catch (e) {
       console.error("Error adding book:", e);
-      throw e;
+      return e;
     }
   },
 
@@ -24,7 +24,7 @@ module.exports = {
       return await Book.find({});
     } catch (e) {
       console.error("Failed to get books:", e);
-      throw e;
+      return e;
     }
   },
 
@@ -70,7 +70,7 @@ module.exports = {
       };
     } catch (e) {
       console.error("Search books failed:", e);
-      throw e;
+      return e;
     }
   },
 
@@ -93,7 +93,7 @@ module.exports = {
       return opts.map((o) => o.text);
     } catch (e) {
       console.error("Autocomplete error:", e);
-      throw e;
+      return e;
     }
   },
 
@@ -104,7 +104,7 @@ module.exports = {
       return deleted;
     } catch (e) {
       console.error("Delete book error:", e);
-      throw e;
+      return e;
     }
   },
 };
