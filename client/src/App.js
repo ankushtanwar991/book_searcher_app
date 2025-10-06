@@ -25,69 +25,63 @@ const theme = createTheme({
 
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [author, setAuthor] = useState('');
-  const [category, setCategory] = useState('');
+  const [cat, setCat] = useState('');
+  const [writer, setWriter] = useState('');
   const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [totalBooks, setTotalBooks] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(4);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newBook, setNewBook] = useState({
-    title: '',
-    author: '',
-    category: '',
-    published_date: '',
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [bookToAdd, setBookToAdd] = useState({
+    title: '', author: '', category: '', published_date: ''
   });
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'success' });
 
-  const fetchBooks = async (page = 1) => {
-    setLoading(true);
+  const doSearch = async (pageNum = 1) => {
+    setIsLoading(true);
     try {
-      const res = await searchBooks(searchTerm, category, author, page, pageSize);
+      const res = await searchBooks(searchTerm, cat, writer, pageNum, pageSize);
       setBooks(res.hits);
       setTotalBooks(res.total);
-      setCurrentPage(page);
+      setCurrentPage(pageNum);
     } catch {
-      setAlert({ open: true, message: 'Failed to fetch books.', severity: 'error' });
+      setAlert({ open: true, message: 'Could not fetch results', severity: 'error' });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchBooks(1);
-  }, []);
+  useEffect(() => { doSearch(1); }, []);
 
-  const handleAddBook = async () => {
+  const addNewBook = async () => {
     try {
-      await addBook(newBook);
-      setAlert({ open: true, message: 'Book added successfully!', severity: 'success' });
-      setIsAddDialogOpen(false);
-      setNewBook({ title: '', author: '', category: '', published_date: '' });
-      fetchBooks(currentPage);
+      await addBook(bookToAdd);
+      setAlert({ open: true, message: 'Book added!', severity: 'success' });
+      setShowAddDialog(false);
+      setBookToAdd({ title: '', author: '', category: '', published_date: '' });
+      await doSearch(currentPage);
     } catch {
-      setAlert({ open: true, message: 'Failed to add book.', severity: 'error' });
+      setAlert({ open: true, message: 'Adding book failed.', severity: 'error' });
     }
   };
 
-  const handleDeleteBook = async (id) => {
+  const removeBook = async (id) => {
     try {
       await deleteBook(id);
       setAlert({ open: true, message: 'Book removed!', severity: 'success' });
-      fetchBooks(currentPage);
+      await doSearch(currentPage);
     } catch {
-      setAlert({ open: true, message: 'Failed to remove book.', severity: 'error' });
+      setAlert({ open: true, message: 'Removing book failed.', severity: 'error' });
     }
   };
 
   return (
     <ThemeProvider theme={theme}>
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Typography variant="h4" fontWeight={600} color="primary" gutterBottom>
+        <Typography variant="h4" fontWeight="600" color="primary" gutterBottom>
           Book Search App
         </Typography>
-
         <Card sx={{ p: 3, mb: 3 }}>
           <CardContent>
             <Grid container spacing={2}>
@@ -105,14 +99,14 @@ function App() {
                   label="Author"
                   variant="outlined"
                   fullWidth
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
+                  value={writer}
+                  onChange={(e) => setWriter(e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} md={2}>
                 <Select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  value={cat}
+                  onChange={(e) => setCat(e.target.value)}
                   displayEmpty
                   fullWidth
                 >
@@ -125,25 +119,24 @@ function App() {
                   <MenuItem value="science">Science</MenuItem>
                 </Select>
               </Grid>
-              <Grid item xs={12} md={2}>
+              <Grid item xs={12} md={2} display="flex" gap={1}>
                 <Button
                   variant="contained"
                   startIcon={<SearchIcon />}
                   fullWidth
-                  onClick={() => fetchBooks(1)}
-                  disabled={loading}
+                  onClick={() => doSearch(1)}
+                  disabled={isLoading}
                 >
                   Search
                 </Button>
               </Grid>
             </Grid>
-
             <Box display="flex" justifyContent="flex-end" mt={2}>
               <Button
                 variant="outlined"
                 color="secondary"
                 startIcon={<AddIcon />}
-                onClick={() => setIsAddDialogOpen(true)}
+                onClick={() => setShowAddDialog(true)}
               >
                 Add Book
               </Button>
@@ -151,13 +144,13 @@ function App() {
           </CardContent>
         </Card>
 
-        {loading && (
+        {isLoading && (
           <Box display="flex" justifyContent="center" my={4}>
             <CircularProgress />
           </Box>
         )}
 
-        {!loading && (
+        {!isLoading && (
           <Typography variant="subtitle1" mb={2}>
             Found {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
           </Typography>
@@ -168,13 +161,13 @@ function App() {
             <Card key={book.id || idx} sx={{ mb: 2 }}>
               <ListItem
                 secondaryAction={
-                  <IconButton edge="end" color="error" onClick={() => handleDeleteBook(book._id)}>
+                  <IconButton edge="end" color="error" onClick={() => removeBook(book._id)}>
                     <DeleteIcon />
                   </IconButton>
                 }
               >
                 <ListItemText
-                  primary={<Typography fontWeight={500}>{book.title}</Typography>}
+                  primary={<Typography fontWeight="500">{book.title}</Typography>}
                   secondary={`Author: ${book.author || 'Unknown'} | Category: ${book.category || 'N/A'} | Published: ${new Date(book.published_date).toLocaleDateString()}`}
                 />
               </ListItem>
@@ -187,45 +180,43 @@ function App() {
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Button
             variant="outlined"
-            onClick={() => fetchBooks(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1 || loading}
+            onClick={() => doSearch(currentPage > 1 ? currentPage - 1 : 1)}
+            disabled={currentPage === 1 || isLoading}
           >
             Previous
           </Button>
-          <Typography>
-            Page {currentPage} of {Math.ceil(totalBooks / pageSize) || 1}
-          </Typography>
+          <Typography>Page {currentPage} of {Math.ceil(totalBooks / pageSize) || 1}</Typography>
           <Button
             variant="outlined"
-            onClick={() => fetchBooks(currentPage + 1)}
-            disabled={loading || currentPage >= Math.ceil(totalBooks / pageSize)}
+            onClick={() => doSearch(currentPage + 1)}
+            disabled={isLoading || currentPage >= Math.ceil(totalBooks / pageSize)}
           >
             Next
           </Button>
         </Box>
 
-        <Dialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} fullWidth maxWidth="sm">
+        <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)} fullWidth maxWidth="sm">
           <DialogTitle>Add New Book</DialogTitle>
           <DialogContent>
             <TextField
               label="Title"
               variant="outlined"
               fullWidth
-              value={newBook.title}
-              onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
+              value={bookToAdd.title}
+              onChange={(e) => setBookToAdd({ ...bookToAdd, title: e.target.value })}
               sx={{ mt: 2, mb: 2 }}
             />
             <TextField
               label="Author"
               variant="outlined"
               fullWidth
-              value={newBook.author}
-              onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
+              value={bookToAdd.author}
+              onChange={(e) => setBookToAdd({ ...bookToAdd, author: e.target.value })}
               sx={{ mb: 2 }}
             />
             <Select
-              value={newBook.category}
-              onChange={(e) => setNewBook({ ...newBook, category: e.target.value })}
+              value={bookToAdd.category}
+              onChange={(e) => setBookToAdd({ ...bookToAdd, category: e.target.value })}
               displayEmpty
               fullWidth
               sx={{ mb: 2 }}
@@ -244,16 +235,14 @@ function App() {
               variant="outlined"
               fullWidth
               InputLabelProps={{ shrink: true }}
-              value={newBook.published_date}
-              onChange={(e) => setNewBook({ ...newBook, published_date: e.target.value })}
+              value={bookToAdd.published_date}
+              onChange={(e) => setBookToAdd({ ...bookToAdd, published_date: e.target.value })}
               sx={{ mb: 2 }}
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddBook} variant="contained">
-              Add Book
-            </Button>
+            <Button onClick={() => setShowAddDialog(false)}>Cancel</Button>
+            <Button onClick={addNewBook} variant="contained">Add Book</Button>
           </DialogActions>
         </Dialog>
 
@@ -263,7 +252,10 @@ function App() {
           onClose={() => setAlert({ ...alert, open: false })}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <Alert severity={alert.severity} sx={{ width: '100%' }}>
+          <Alert
+            severity={alert.severity}
+            sx={{ width: '100%' }}
+          >
             {alert.message}
           </Alert>
         </Snackbar>
@@ -271,4 +263,5 @@ function App() {
     </ThemeProvider>
   );
 }
+
 export default App;
